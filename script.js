@@ -1965,64 +1965,24 @@ ensureEssentialDom();
 const legacy = document.getElementById('theme-toggle');
 if (legacy) legacy.remove();
 
-(async () => {
-  let loaded = false;
-
-  try {
-    // 1) On tente de restaurer le dossier choisi (si permission toujours OK)
-    if (await restoreFolderHandles()) {
-      await loadTransactionsFolder(); // (inner) remplit window.transactions
-      loaded = true;
+// --- NOUVEAU BLOC NETTOYÉ ---
+    
+    // On s'assure que les données sont synchronisées (au cas où)
+    if (Array.isArray(window.transactions)) {
+        transactions = window.transactions;
     }
 
-    // 2) Sinon Dropbox si dispo et connecté
-    if (!loaded && typeof isDropboxConnected === 'function' && isDropboxConnected() && typeof loadTransactionsDropbox === 'function') {
-      await loadTransactionsDropbox(); // (outer) peut remplir transactions
-      loaded = true;
-    }
+    // Rafraîchit l'affichage (Calendrier, Listes, Stats)
+    if (typeof updateViews === 'function') updateViews();
 
-    // 3) Sinon, Local navigateur
-    if (!loaded) {
-      try {
-        const raw = localStorage.getItem('transactions');
-        window.transactions = raw ? JSON.parse(raw) : [];
-      } catch {
-        window.transactions = [];
-      }
-    }
-  } catch (e) {
-    console.warn('Initial load failed → fallback local', e);
-    try {
-      const raw = localStorage.getItem('transactions');
-      window.transactions = raw ? JSON.parse(raw) : [];
-    } catch {
-      window.transactions = [];
-    }
-  }
+    // Met à jour les statuts des services Cloud
+    if (typeof updateFolderStatus  === 'function') updateFolderStatus();
+    if (typeof updateDropboxStatus === 'function') updateDropboxStatus();
+    if (typeof updateGoogleStatus  === 'function') updateGoogleStatus();
+    if (typeof updateMSStatus      === 'function') updateMSStatus();
 
-  // 🔗 SYNC DE RÉFÉRENCE (critique pour le calendrier)
-  // - Si window.transactions existe => on pointe transactions dessus.
-  // - Sinon, si transactions existe => on reflète dans window.transactions.
-  // - Sinon, on crée un tableau partagé vide.
-  if (Array.isArray(window.transactions)) {
-    transactions = window.transactions;
-  } else if (Array.isArray(transactions)) {
-    window.transactions = transactions;
-  } else {
-    transactions = window.transactions = [];
-  }
-
-  // Rafraîchit TOUT (calendrier + historique + stats + récap)
-  if (typeof updateViews === 'function') updateViews();
-
-  // Statuts services
-  if (typeof updateFolderStatus  === 'function') updateFolderStatus();
-  if (typeof updateDropboxStatus === 'function') updateDropboxStatus();
-  if (typeof updateGoogleStatus  === 'function') updateGoogleStatus();
-  if (typeof updateMSStatus      === 'function') updateMSStatus();
-
-  if (typeof __attachDatePickers === 'function') __attachDatePickers();
-})();
+    // Active les sélecteurs de date
+    if (typeof __attachDatePickers === 'function') __attachDatePickers();
 
     // Pickers catégories — SAFE
     initCategoryPickerSafe({
