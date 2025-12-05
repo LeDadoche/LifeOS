@@ -1,5 +1,11 @@
 // script.js (shim) — charge le vrai point d'entrée modulaire
 import './src/js/index.js';
+import { 
+  initTransactions, 
+  addTransaction as apiAdd, 
+  updateTransaction as apiUpdate,
+  deleteTransaction as apiDelete
+} from './src/js/transactions.js';
 
 // Lightweight served-version marker to help detect caching in the browser console
 try{ console.log('[SCRIPT] loaded script.js — build ts:', new Date().toISOString()); }catch(e){}
@@ -1412,66 +1418,56 @@ function renderMonthSummary() {
   }
 }
 
-// ====== Formulaires ======
+// Fonction nettoyée qui utilise notre nouveau module
 async function addTransaction(ev) {
   ev.preventDefault();
 
+  // 1. Récupération des valeurs du formulaire (inchangé)
   const type = document.getElementById('type').value;
   const category = document.getElementById('category').value || (typeof DEFAULT_CATEGORY !== 'undefined' ? DEFAULT_CATEGORY : 'autre');
   const description = document.getElementById('description').value.trim();
   const amount = Number(document.getElementById('amount').value);
+  
+  // Utilisation de readDateInput si dispo, sinon lecture brute
   const dateISO = (typeof readDateInput === 'function') ? readDateInput('date') : (document.getElementById('date').value || '').trim();
 
   const recurrence = document.getElementById('recurrence')?.value || 'none';
   const untilISO = (typeof readDateInput === 'function') ? readDateInput('recurrence-end') : (document.getElementById('recurrence-end')?.value || '').trim();
+  
   const installmentsEl = document.getElementById('installments');
   const installments = installmentsEl ? Number(installmentsEl.value || 0) : 0;
   const applyPrev = document.getElementById('apply-previous')?.checked || false;
 
-  if (!description || !amount || !dateISO) return;
+  if (!description || !amount || !dateISO) {
+    alert("Veuillez remplir la description, le montant et la date.");
+    return;
+  }
 
+  // 2. Création de l'objet transaction propre
   const tx = {
-    id: (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()),
+    // L'ID sera généré automatiquement par le module s'il est absent
     type, category, description,
     amount, date: dateISO,
     recurrence, applyPrev
   };
+
   if (recurrence === 'installments' && installments > 1) tx.installments = installments;
   if (recurrence !== 'none' && untilISO) tx.until = untilISO;
 
-  // ✅ Source unique : on pousse dans "transactions"
-  if (!Array.isArray(transactions)) transactions = [];
-  transactions.push(tx);
+  // 3. ✅ APPEL AU NOUVEAU MODULE (La magie est ici)
+  // On utilise l'alias 'apiAdd' qu'on a importé tout en haut
+  apiAdd(tx);
 
-  // ✅ Reflect: garde window.transactions pointant sur le même tableau
-  window.transactions = transactions;
-
-  // ✅ Persistance (respecte tes modes si dispo)
-  try {
-    if (typeof persistTransactions === 'function') {
-      await persistTransactions();
-    } else if (window.__folderDirHandle && typeof saveTransactionsFolder === 'function') {
-      await saveTransactionsFolder();
-    } else if (typeof isDropboxConnected === 'function' && isDropboxConnected() && typeof saveTransactionsDropbox === 'function') {
-      await saveTransactionsDropbox();
-    } else if (typeof saveTransactionsLocal === 'function') {
-      saveTransactionsLocal();
-    } else {
-      localStorage.setItem('transactions', JSON.stringify(transactions));
-    }
-  } catch (e) {
-    console.warn('[persist] échec principal → copie locale', e);
-    try { localStorage.setItem('transactions', JSON.stringify(transactions)); } catch(_) {}
-  }
-
-  // ✅ Rafraîchit l’UI (calendrier + historique + stats + récap)
+  // 4. Rafraîchissement de l'affichage
   if (typeof updateViews === 'function') updateViews();
 
-  // Reset du formulaire + lignes conditionnelles
+  // 5. Reset du formulaire (inchangé)
   ev.target.reset?.();
   const ap = document.getElementById('apply-previous-row'); if (ap) ap.style.display = 'none';
   const re = document.getElementById('recurrence-end-row'); if (re) re.style.display = 'none';
   const ins = document.getElementById('installments-row'); if (ins) ins.style.display = 'none';
+  
+  console.log("Transaction ajoutée avec succès via le nouveau module !");
 }
 
 function openEditModal(tx) {
@@ -1944,6 +1940,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Démarre l'authentification avant de charger l'application
   setupAuthentication(() => {
     parseDropboxTokenFromUrl();
+    initTransactions(); 
+
     parseCloudTokensFromUrl();
 
     restoreDropboxSession();
