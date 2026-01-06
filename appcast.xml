@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+    <channel>
+        <title>LifeOS</title>
+        <description>Mises à jour de LifeOS</description>
+        <language>fr</language>
+        <item>
+            <!-- Version actuelle - À modifier à chaque release -->
+            <title>Version 1.0.0</title>
+            <description>
+                <![CDATA[
+                    <h3>Nouveautés :</h3>
+                    <ul>
+                        <li>Première version stable</li>
+                        <li>Gestion des tâches</li>
+                        <li>Agenda avec rappels</li>
+                        <li>Notes personnalisées</li>
+                    </ul>
+                ]]>
+            </description>
+            <pubDate>Mon, 06 Jan 2026 12:00:00 +0000</pubDate>
+            
+            <!-- Version DOIT correspondre à celle dans pubspec.yaml -->
+            <sparkle:version>1.0.0</sparkle:version>
+            
+            <!-- URL de téléchargement de l'APK sur GitHub Releases -->
+            <!-- Format: https://github.com/USERNAME/REPO/releases/download/vX.X.X/app-release.apk -->
+            <enclosure 
+                url="https://github.com/VOTRE_USERNAME/VOTRE_REPO/releases/download/v1.0.0/app-release.apk"
+                sparkle:os="android"
+                type="application/vnd.android.package-archive"
+            />
+        </item>
+    </channel>
+</rss>

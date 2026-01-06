@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/task_item_background"
+    android:padding="12dp"
+    android:layout_marginBottom="4dp">
+
+    <!-- Main Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Check Circle Button - made clickable with larger touch area -->
+        <FrameLayout
+            android:id="@+id/task_check"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless">
+            <ImageView
+                android:id="@+id/task_check_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_radio_unchecked"
+                android:contentDescription="Marquer comme terminée" />
+        </FrameLayout>
+
+        <!-- Task Title -->
+        <TextView
+            android:id="@+id/task_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="Titre de la tâche"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Reminder Icon (visible if has reminder) -->
+        <ImageView
+            android:id="@+id/task_reminder_icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_bell"
+            android:contentDescription="Rappel"
+            android:visibility="gone" />
+
+        <!-- Star Button - made clickable with larger touch area -->
+        <FrameLayout
+            android:id="@+id/task_star"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless">
+            <ImageView
+                android:id="@+id/task_star_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_star_outline"
+                android:contentDescription="Important" />
+        </FrameLayout>
+
+    </LinearLayout>
+
+    <!-- Due Date Row (visible if has due date) -->
+    <LinearLayout
+        android:id="@+id/due_date_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="4dp"
+        android:layout_marginStart="36dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:src="@drawable/ic_calendar_small"
+            android:contentDescription="Date" />
+
+        <TextView
+            android:id="@+id/task_due_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:text="mer. 24 déc. 2025"
+            android:textColor="#FF6B6B"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</LinearLayout>
