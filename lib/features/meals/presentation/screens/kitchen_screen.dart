@@ -72,6 +72,7 @@ class KitchenScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           title: const Text('Cuisine'),
           leading: IconButton(

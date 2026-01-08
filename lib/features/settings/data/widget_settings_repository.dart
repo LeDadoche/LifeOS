@@ -21,10 +21,14 @@ class WidgetSettingsRepository {
   WidgetSettingsRepository(this._client);
 
   Stream<List<WidgetSetting>> getSettings() {
+    debugPrint('🔄 [Realtime] Initialisation stream WIDGET_SETTINGS');
     return _client
         .from('widget_settings')
         .stream(primaryKey: ['widget_type'])
-        .map((data) => data.map((json) => WidgetSetting.fromJson(json)).toList());
+        .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [widget_settings] - ${data.length} éléments');
+          return data.map((json) => WidgetSetting.fromJson(json)).toList();
+        });
   }
 
   Future<void> saveSetting(String widgetType, Color color, IconData icon) async {

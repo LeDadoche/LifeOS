@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../data/note_model.dart';
 import '../../data/notes_repository.dart';
+import 'sketch_screen.dart';
 
 class NoteDetailScreen extends ConsumerStatefulWidget {
   final Note note;
@@ -20,11 +22,12 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   Timer? _debounce;
   bool _isSaving = false;
   late NotesRepository _notesRepository;
-  
+
   // État local pour couleur et thème
   late NoteColor _currentColor;
   late NoteTheme _currentTheme;
   late bool _isFavorite;
+  String? _currentSketchData;
 
   @override
   void initState() {
@@ -35,6 +38,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     _currentColor = widget.note.color;
     _currentTheme = widget.note.theme;
     _isFavorite = widget.note.isFavorite;
+    _currentSketchData = widget.note.sketchData;
   }
 
   @override
@@ -65,6 +69,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       isFavorite: _isFavorite,
       color: _currentColor,
       theme: _currentTheme,
+      sketchData: () => _currentSketchData,
     );
 
     await _notesRepository.updateNote(updatedNote);
@@ -83,6 +88,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       isFavorite: _isFavorite,
       color: _currentColor,
       theme: _currentTheme,
+      sketchData: () => _currentSketchData,
     );
     _notesRepository.updateNote(updatedNote);
   }
@@ -95,6 +101,67 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
   void _toggleFavorite() {
     setState(() {
       _isFavorite = !_isFavorite;
+    });
+    _onNoteChanged();
+  }
+
+  /// Extrait l'image base64 du sketch (compatible ancien et nouveau format)
+  String? _getSketchImageBase64() {
+    if (_currentSketchData == null || _currentSketchData!.isEmpty) return null;
+
+    // Nouveau format: JSON avec 'image' et 'json'
+    if (_currentSketchData!.startsWith('{')) {
+      try {
+        final data = jsonDecode(_currentSketchData!) as Map<String, dynamic>;
+        return data['image'] as String?;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Ancien format: directement base64
+    return _currentSketchData;
+  }
+
+  /// Extrait les données JSON du sketch pour édition
+  String? _getSketchJsonData() {
+    if (_currentSketchData == null || _currentSketchData!.isEmpty) return null;
+
+    // Nouveau format: extraire le champ 'json'
+    if (_currentSketchData!.startsWith('{')) {
+      try {
+        final data = jsonDecode(_currentSketchData!) as Map<String, dynamic>;
+        return data['json'] as String?;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Ancien format: pas de données éditables
+    return null;
+  }
+
+  Future<void> _openSketchEditor() async {
+    // Passer les données JSON pour édition (traits avec couleurs)
+    final jsonData = _getSketchJsonData();
+
+    final result = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(
+        builder: (_) => SketchScreen(existingSketchData: jsonData),
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _currentSketchData = result;
+      });
+      _onNoteChanged();
+    }
+  }
+
+  void _removeSketch() {
+    setState(() {
+      _currentSketchData = null;
     });
     _onNoteChanged();
   }
@@ -118,7 +185,8 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               context.pop(); // Close dialog
               context.pop(); // Go back to list
             },
-            child: Text('Supprimer', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text('Supprimer',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -218,6 +286,70 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          // Aperçu du croquis si présent
+          if (_currentSketchData != null &&
+              _getSketchImageBase64() != null) ...[
+            Container(
+              height: 150,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color:
+                        Theme.of(context).colorScheme.outline.withOpacity(0.3)),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: GestureDetector(
+                      onTap: _openSketchEditor,
+                      child: Image.memory(
+                        base64Decode(_getSketchImageBase64()!),
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit,
+                              size: 18, color: Colors.black),
+                          onPressed: _openSketchEditor,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.9),
+                            padding: const EdgeInsets.all(6),
+                            minimumSize: const Size(28, 28),
+                          ),
+                          tooltip: 'Modifier',
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: Icon(Icons.close,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.error),
+                          onPressed: _removeSketch,
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.9),
+                            padding: const EdgeInsets.all(6),
+                            minimumSize: const Size(28, 28),
+                          ),
+                          tooltip: 'Supprimer',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Expanded(
             child: TextField(
               controller: _contentController,
@@ -265,6 +397,7 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
     );
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: backgroundColor,
       appBar: AppBar(
         backgroundColor: backgroundColor,
@@ -289,7 +422,21 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
               color: _isFavorite ? Colors.amber : null,
             ),
             onPressed: _toggleFavorite,
-            tooltip: _isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
+            tooltip:
+                _isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris',
+          ),
+          // Bouton croquis
+          IconButton(
+            icon: Icon(
+              _currentSketchData != null ? Icons.brush : Icons.brush_outlined,
+              color: _currentSketchData != null
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            onPressed: _openSketchEditor,
+            tooltip: _currentSketchData != null
+                ? 'Modifier le croquis'
+                : 'Ajouter un croquis',
           ),
           // Bouton apparence
           IconButton(
@@ -310,7 +457,6 @@ class _NoteDetailScreenState extends ConsumerState<NoteDetailScreen> {
       body: body,
     );
   }
-
 }
 
 /// Bottom sheet pour choisir l'apparence de la note
@@ -349,13 +495,13 @@ class _AppearanceSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Titre
           Text(
             'Apparence',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 24),
 
@@ -363,8 +509,8 @@ class _AppearanceSheet extends StatelessWidget {
           Text(
             'Couleurs',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -372,17 +518,18 @@ class _AppearanceSheet extends StatelessWidget {
             children: [
               _ColorCircle(
                 color: Colors.transparent,
-                isSelected: currentColor == NoteColor.none && currentTheme == NoteTheme.none,
+                isSelected: currentColor == NoteColor.none &&
+                    currentTheme == NoteTheme.none,
                 onTap: () => onColorSelected(NoteColor.none),
                 icon: Icons.block,
               ),
-              ...NoteColor.values.where((c) => c != NoteColor.none).map((color) => 
-                _ColorCircle(
-                  color: color.color,
-                  isSelected: currentColor == color,
-                  onTap: () => onColorSelected(color),
-                ),
-              ),
+              ...NoteColor.values.where((c) => c != NoteColor.none).map(
+                    (color) => _ColorCircle(
+                      color: color.color,
+                      isSelected: currentColor == color,
+                      onTap: () => onColorSelected(color),
+                    ),
+                  ),
             ],
           ),
           const SizedBox(height: 24),
@@ -391,8 +538,8 @@ class _AppearanceSheet extends StatelessWidget {
           Text(
             'Thèmes',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            ),
+                  color: colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 12),
           // Wrap centré pour les thèmes
@@ -401,13 +548,16 @@ class _AppearanceSheet extends StatelessWidget {
               alignment: WrapAlignment.center,
               spacing: 12,
               runSpacing: 12,
-              children: NoteTheme.values.where((t) => t != NoteTheme.none).map((theme) => 
-                _ThemeCard(
-                  theme: theme,
-                  isSelected: currentTheme == theme,
-                  onTap: () => onThemeSelected(theme),
-                ),
-              ).toList(),
+              children: NoteTheme.values
+                  .where((t) => t != NoteTheme.none)
+                  .map(
+                    (theme) => _ThemeCard(
+                      theme: theme,
+                      isSelected: currentTheme == theme,
+                      onTap: () => onThemeSelected(theme),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
           const SizedBox(height: 16),
@@ -442,15 +592,16 @@ class _ColorCircle extends StatelessWidget {
           color: color == Colors.transparent ? null : color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).colorScheme.primary 
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).colorScheme.outline,
             width: isSelected ? 3 : 1,
           ),
         ),
         child: icon != null
-            ? Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant)
-            : isSelected 
+            ? Icon(icon,
+                size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant)
+            : isSelected
                 ? const Icon(Icons.check, size: 20, color: Colors.black54)
                 : null,
       ),
@@ -481,8 +632,8 @@ class _ThemeCard extends StatelessWidget {
           color: theme.backgroundColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).colorScheme.primary 
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).colorScheme.outline.withOpacity(0.3),
             width: isSelected ? 3 : 1,
           ),
@@ -513,8 +664,8 @@ class _ThemeCard extends StatelessWidget {
                 children: [
                   Icon(
                     isSelected ? Icons.check_circle : theme.icon,
-                    color: isSelected 
-                        ? Theme.of(context).colorScheme.primary 
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.primary
                         : theme.accentColor,
                     size: 28,
                   ),

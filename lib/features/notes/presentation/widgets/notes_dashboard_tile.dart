@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,8 +54,9 @@ class NotesDashboardTile extends ConsumerWidget {
               return notesAsync.when(
                 data: (notes) {
                   final count = notes.length;
-                  final lastNoteTitle =
-                      notes.isNotEmpty ? notes.first.title : '';
+                  final lastNote = notes.isNotEmpty ? notes.first : null;
+                  final lastNoteTitle = lastNote?.title ?? '';
+                  final lastNoteHasSketch = lastNote?.hasSketch ?? false;
 
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -82,24 +85,43 @@ class NotesDashboardTile extends ConsumerWidget {
                         ],
                       ),
                       const Spacer(),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          '$count',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      // Aperçu du croquis si présent dans la dernière note
+                      if (lastNoteHasSketch &&
+                          lastNote?.sketchImageBase64 != null) ...[
+                        Expanded(
+                          flex: 2,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.memory(
+                              base64Decode(lastNote!.sketchImageBase64!),
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                      ] else ...[
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '$count',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      ],
                       if (lastNoteTitle.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'Dernière : $lastNoteTitle',
+                            lastNoteHasSketch
+                                ? lastNoteTitle
+                                : 'Dernière : $lastNoteTitle',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style:

@@ -50,11 +50,38 @@ class TasksWidgetProvider : HomeWidgetProvider() {
                 // Setup header buttons
                 setupHeaderButtons(context, views)
 
+                // Setup retry button click handler
+                val retryIntent = HomeWidgetBackgroundIntent.getBroadcast(
+                    context,
+                    Uri.parse("lifeos://tasks/refresh")
+                )
+                views.setOnClickPendingIntent(R.id.retry_state, retryIntent)
+                views.setOnClickPendingIntent(R.id.retry_icon, retryIntent)
+
+                // Check for data freshness - if last update is > 3s ago and no data, show retry
+                val lastUpdateTime = widgetData.getLong("tasks_last_update", 0L)
+                val currentTime = System.currentTimeMillis()
+                val isStale = (currentTime - lastUpdateTime) > 3000 // 3 seconds
+                
+                Log.d(TAG, "Last update: $lastUpdateTime, Current: $currentTime, isStale: $isStale")
+
+                // Hide loading and retry states by default
+                views.setViewVisibility(R.id.loading_state, android.view.View.GONE)
+                views.setViewVisibility(R.id.retry_state, android.view.View.GONE)
+
                 if (tasks.isEmpty()) {
                     views.setViewVisibility(R.id.tasks_list, android.view.View.GONE)
-                    views.setViewVisibility(R.id.empty_text, android.view.View.VISIBLE)
-                    views.setTextViewText(R.id.empty_text, "Aucune tâche\nTouchez + pour ajouter")
-                    Log.d(TAG, "Showing empty state")
+                    
+                    // If data never loaded (lastUpdateTime == 0) or stale with no data, show retry
+                    if (lastUpdateTime == 0L || (isStale && tasksJson.isNullOrEmpty())) {
+                        views.setViewVisibility(R.id.retry_state, android.view.View.VISIBLE)
+                        views.setViewVisibility(R.id.empty_text, android.view.View.GONE)
+                        Log.d(TAG, "Showing retry state (no data, stale)")
+                    } else {
+                        views.setViewVisibility(R.id.empty_text, android.view.View.VISIBLE)
+                        views.setTextViewText(R.id.empty_text, "Aucune tâche\nTouchez + pour ajouter")
+                        Log.d(TAG, "Showing empty state")
+                    }
                 } else {
                     views.setViewVisibility(R.id.tasks_list, android.view.View.VISIBLE)
                     views.setViewVisibility(R.id.empty_text, android.view.View.GONE)

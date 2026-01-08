@@ -74,6 +74,57 @@
         android:dividerHeight="4dp"
         android:scrollbars="none" />
 
+    <!-- Loading State -->
+    <LinearLayout
+        android:id="@+id/loading_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+        
+        <ProgressBar
+            android:id="@+id/loading_spinner"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:indeterminateTint="#80FFFFFF" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Chargement..."
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <!-- Retry State (shown after timeout) -->
+    <LinearLayout
+        android:id="@+id/retry_state"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+        
+        <ImageView
+            android:id="@+id/retry_icon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_popup_sync"
+            android:contentDescription="Rafraîchir" />
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Touchez pour actualiser"
+            android:textColor="#80FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
+
     <!-- Empty State -->
     <TextView
         android:id="@+id/empty_text"

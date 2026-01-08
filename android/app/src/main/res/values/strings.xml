@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Life OS</string>
+    <string name="app_name">LifeOS</string>
     <string name="widget_tasks_name">Tâches LifeOS</string>
     <string name="widget_tasks_description">Affiche vos tâches en attente avec accès rapide</string>
     <string name="widget_agenda_name">Agenda LifeOS</string>

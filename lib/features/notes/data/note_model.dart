@@ -1,23 +1,25 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 /// Couleurs pastels disponibles pour les notes
 enum NoteColor {
-  none,    // Pas de couleur (défaut)
-  yellow,  // Jaune pastel
-  blue,    // Bleu pastel
-  green,   // Vert pastel
-  pink,    // Rose pastel
-  purple,  // Violet pastel
-  grey,    // Gris pastel
+  none, // Pas de couleur (défaut)
+  yellow, // Jaune pastel
+  blue, // Bleu pastel
+  green, // Vert pastel
+  pink, // Rose pastel
+  purple, // Violet pastel
+  grey, // Gris pastel
 }
 
 /// Thèmes visuels avec images de fond
 enum NoteTheme {
-  none,      // Pas de thème
-  mountain,  // Montagne
-  sakura,    // Sakura (cerisiers)
-  beach,     // Plage
-  autumn,    // Automne
+  none, // Pas de thème
+  mountain, // Montagne
+  sakura, // Sakura (cerisiers)
+  beach, // Plage
+  autumn, // Automne
 }
 
 extension NoteColorExtension on NoteColor {
@@ -140,6 +142,7 @@ class Note {
   final bool isFavorite;
   final NoteColor color;
   final NoteTheme theme;
+  final String? sketchData; // Données du croquis en base64
 
   Note({
     this.id,
@@ -150,7 +153,47 @@ class Note {
     this.isFavorite = false,
     this.color = NoteColor.none,
     this.theme = NoteTheme.none,
+    this.sketchData,
   });
+
+  /// Vérifie si la note contient un croquis
+  bool get hasSketch => sketchData != null && sketchData!.isNotEmpty;
+
+  /// Extrait l'image base64 du sketch (compatible ancien et nouveau format)
+  String? get sketchImageBase64 {
+    if (sketchData == null || sketchData!.isEmpty) return null;
+
+    // Nouveau format: JSON avec 'image' et 'json'
+    if (sketchData!.startsWith('{')) {
+      try {
+        final data = jsonDecode(sketchData!) as Map<String, dynamic>;
+        return data['image'] as String?;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Ancien format: directement base64
+    return sketchData;
+  }
+
+  /// Extrait les données JSON du sketch pour édition
+  String? get sketchJsonData {
+    if (sketchData == null || sketchData!.isEmpty) return null;
+
+    // Nouveau format: extraire le champ 'json'
+    if (sketchData!.startsWith('{')) {
+      try {
+        final data = jsonDecode(sketchData!) as Map<String, dynamic>;
+        return data['json'] as String?;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // Ancien format: pas de données éditables
+    return null;
+  }
 
   factory Note.fromJson(Map<String, dynamic> json) {
     return Note(
@@ -168,6 +211,7 @@ class Note {
         (t) => t.name == (json['theme'] as String?),
         orElse: () => NoteTheme.none,
       ),
+      sketchData: json['sketch_data'] as String?,
     );
   }
 
@@ -181,6 +225,7 @@ class Note {
       'is_favorite': isFavorite,
       'color': color.name,
       'theme': theme.name,
+      if (sketchData != null) 'sketch_data': sketchData,
     };
   }
 
@@ -193,6 +238,7 @@ class Note {
     bool? isFavorite,
     NoteColor? color,
     NoteTheme? theme,
+    String? Function()? sketchData,
   }) {
     return Note(
       id: id ?? this.id,
@@ -203,6 +249,7 @@ class Note {
       isFavorite: isFavorite ?? this.isFavorite,
       color: color ?? this.color,
       theme: theme ?? this.theme,
+      sketchData: sketchData != null ? sketchData() : this.sketchData,
     );
   }
 
@@ -228,4 +275,3 @@ class Note {
     return Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5);
   }
 }
-

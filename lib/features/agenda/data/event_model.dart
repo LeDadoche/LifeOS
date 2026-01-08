@@ -28,6 +28,7 @@ class Event {
   final String title;
   final String? description;
   final DateTime date;
+  final DateTime? endTime; // Heure de fin optionnelle
   final bool isAllDay;
   final String? location;
   final String userId;
@@ -39,6 +40,7 @@ class Event {
     required this.title,
     this.description,
     required this.date,
+    this.endTime,
     this.isAllDay = false,
     this.location,
     required this.userId,
@@ -51,6 +53,7 @@ class Event {
     String? title,
     String? description,
     DateTime? date,
+    DateTime? Function()? endTime,
     bool? isAllDay,
     String? location,
     String? userId,
@@ -61,6 +64,7 @@ class Event {
       title: title ?? this.title,
       description: description ?? this.description,
       date: date ?? this.date,
+      endTime: endTime != null ? endTime() : this.endTime,
       isAllDay: isAllDay ?? this.isAllDay,
       location: location ?? this.location,
       userId: userId ?? this.userId,
@@ -75,6 +79,9 @@ class Event {
       title: json['title'] as String,
       description: json['description'] as String?,
       date: DateTime.parse(json['date'] as String),
+      endTime: json['end_time'] != null
+          ? DateTime.parse(json['end_time'] as String)
+          : null,
       isAllDay: json['is_all_day'] as bool? ?? false,
       location: json['location'] as String?,
       userId: json['user_id'] as String,
@@ -91,6 +98,7 @@ class Event {
       'title': title,
       'description': description,
       'date': date.toIso8601String(),
+      if (endTime != null) 'end_time': endTime!.toIso8601String(),
       'is_all_day': isAllDay,
       'location': location,
       'user_id': userId,
@@ -103,6 +111,18 @@ class Event {
   /// Retourne l'option de rappel correspondante
   ReminderOption get reminderOption =>
       ReminderOption.fromMinutes(reminderMinutes);
+
+  /// Formate la plage horaire (ex: "14:00 - 15:00")
+  String get timeRangeFormatted {
+    final startFormatted =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    if (endTime == null) {
+      return startFormatted;
+    }
+    final endFormatted =
+        '${endTime!.hour.toString().padLeft(2, '0')}:${endTime!.minute.toString().padLeft(2, '0')}';
+    return '$startFormatted - $endFormatted';
+  }
 
   /// Calcule l'heure de notification
   DateTime? get notificationTime {

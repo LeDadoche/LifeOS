@@ -247,13 +247,13 @@ class DashboardConfig extends _$DashboardConfig {
         ],
       };
 
-  static List<DashboardItem> get _allWidgets => [
-        DashboardItem(id: 'agenda', label: 'Agenda'),
-        DashboardItem(id: 'money', label: 'Budget'),
-        DashboardItem(id: 'tasks', label: 'Tâches'),
-        DashboardItem(id: 'notes', label: 'Notes'),
-        DashboardItem(id: 'kitchen', label: 'Cuisine'),
-      ];
+  // static List<DashboardItem> get _allWidgets => [
+  //       DashboardItem(id: 'agenda', label: 'Agenda'),
+  //       DashboardItem(id: 'money', label: 'Budget'),
+  //       DashboardItem(id: 'tasks', label: 'Tâches'),
+  //       DashboardItem(id: 'notes', label: 'Notes'),
+  //       DashboardItem(id: 'kitchen', label: 'Cuisine'),
+  //     ];
 
   LayoutType _currentLayout = LayoutType.desktop;
 

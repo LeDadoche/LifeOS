@@ -68,6 +68,7 @@ class _QuickAddTaskScreenState extends ConsumerState<QuickAddTaskScreen> {
         SnackBar(
           content: Text('Erreur: $e'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
       setState(() => _isSubmitting = false);
@@ -97,6 +98,7 @@ class _QuickAddTaskScreenState extends ConsumerState<QuickAddTaskScreen> {
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Colors.transparent,

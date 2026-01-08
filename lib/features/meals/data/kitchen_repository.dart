@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'meal_model.dart';
@@ -24,15 +25,27 @@ class KitchenRepository {
 
   KitchenRepository(this._client);
 
+  String? get _currentUserId => _client.auth.currentUser?.id;
+
   // --- Recipes ---
 
   Stream<List<Recipe>> watchRecipes() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchRecipes: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream RECIPES pour user $userId');
     return _client
         .from('recipes')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('is_favorite', ascending: false)
         .order('title', ascending: true)
-        .map((data) => data.map((json) => Recipe.fromJson(json)).toList());
+        .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [recipes] - ${data.length} éléments');
+          return data.map((json) => Recipe.fromJson(json)).toList();
+        });
   }
 
   Future<void> addRecipe(Recipe recipe) async {
@@ -92,6 +105,12 @@ await _client.from('recipes').insert(recipe.toJson());
   }
 
   Stream<List<Meal>> watchMealsForWeek() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchMealsForWeek: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream MEAL_PLANS pour user $userId');
     final today = DateTime.now();
     final startOfToday = DateTime(today.year, today.month, today.day);
     final endOfWeek = startOfToday.add(const Duration(days: 7));
@@ -99,8 +118,10 @@ await _client.from('recipes').insert(recipe.toJson());
     return _client
         .from('meal_plans')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('date')
         .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [meal_plans] - ${data.length} éléments');
           final meals = data.map((json) => Meal.fromJson(json)).toList();
           return meals.where((m) => 
             m.date.isAfter(startOfToday.subtract(const Duration(seconds: 1))) && 
@@ -164,11 +185,21 @@ await _client.from('recipes').insert(recipe.toJson());
   }
 
   Stream<List<ShoppingItem>> watchShoppingList() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchShoppingList: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream SHOPPING_ITEMS pour user $userId');
     return _client
         .from('shopping_items')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('is_bought', ascending: true)
         .order('created_at') // Assuming created_at exists, if not remove this line or use name
-        .map((data) => data.map((json) => ShoppingItem.fromJson(json)).toList());
+        .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [shopping_items] - ${data.length} éléments');
+          return data.map((json) => ShoppingItem.fromJson(json)).toList();
+        });
   }
 }

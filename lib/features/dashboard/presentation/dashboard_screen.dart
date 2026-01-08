@@ -102,7 +102,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget build(BuildContext context) {
     final configAsync = ref.watch(dashboardConfigProvider);
     final isEditMode = ref.watch(dashboardEditModeProvider);
-    final currentLayout = ref.watch(currentLayoutTypeProvider);
+    // final currentLayout = ref.watch(currentLayoutTypeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -141,7 +141,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   const SnackBar(
                     content: Text('Modifications enregistrées !'),
                     behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
+                    duration: Duration(seconds: 5),
                   ),
                 );
               },
@@ -769,7 +769,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             content:
                                 Text('${widget.label} ajouté au dashboard'),
                             behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
+                            duration: const Duration(seconds: 5),
                           ),
                         );
                       },
@@ -797,7 +797,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     const SnackBar(
                       content: Text('Widgets repositionnés !'),
                       behavior: SnackBarBehavior.floating,
-                      duration: Duration(seconds: 2),
+                      duration: Duration(seconds: 5),
                     ),
                   );
                 },
@@ -855,7 +855,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 const SnackBar(
                   content: Text('Dashboard réinitialisé !'),
                   behavior: SnackBarBehavior.floating,
-                  duration: Duration(seconds: 2),
+                  duration: Duration(seconds: 5),
                 ),
               );
             },
@@ -888,7 +888,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 SnackBar(
                   content: Text('${item.label} retiré'),
                   behavior: SnackBarBehavior.floating,
-                  duration: const Duration(seconds: 2),
+                  duration: const Duration(seconds: 5),
                   action: SnackBarAction(
                     label: 'Annuler',
                     onPressed: () {

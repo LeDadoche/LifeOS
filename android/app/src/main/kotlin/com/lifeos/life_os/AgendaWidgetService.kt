@@ -9,7 +9,6 @@ import android.widget.RemoteViewsService
 import org.json.JSONArray
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 
 class AgendaWidgetService : RemoteViewsService() {
@@ -31,23 +30,48 @@ class AgendaRemoteViewsFactory(private val context: Context) : RemoteViewsServic
     }
     
     private var events = mutableListOf<EventWidgetData>()
+    private var loadError = false
+    private var isLoading = false
     
     override fun onCreate() {
         Log.d(TAG, "onCreate called")
-        loadEvents()
+        loadEventsDirect()
     }
     
     override fun onDataSetChanged() {
-        Log.d(TAG, "onDataSetChanged called")
-        loadEvents()
+        Log.d(TAG, "onDataSetChanged called - loading events directly")
+        loadEventsDirect()
     }
     
-    private fun loadEvents() {
+    /**
+     * Charge les événements DIRECTEMENT (onDataSetChanged est déjà sur un worker thread)
+     * Pas besoin de thread séparé ou de timeout - Android gère ça
+     */
+    private fun loadEventsDirect() {
+        isLoading = true
+        loadError = false
         events.clear()
+        
         try {
-            val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
-            val eventsJson = prefs.getString("events_data", "[]") ?: "[]"
-            Log.d(TAG, "📅 events_data from SharedPrefs: $eventsJson")
+            var eventsJson: String? = null
+            
+            // Try HomeWidgetPreferences first (home_widget package)
+            val homeWidgetPrefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+            eventsJson = homeWidgetPrefs.getString("events_data", null)
+            Log.d(TAG, "📅 HomeWidgetPreferences events_data: $eventsJson")
+            
+            // Fallback to FlutterSharedPreferences
+            if (eventsJson.isNullOrEmpty() || eventsJson == "[]") {
+                val flutterPrefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+                eventsJson = flutterPrefs.getString("flutter.events_data", null)
+                Log.d(TAG, "📅 FlutterSharedPreferences flutter.events_data: $eventsJson")
+            }
+            
+            if (eventsJson.isNullOrEmpty()) {
+                Log.d(TAG, "📅 No events data found in SharedPreferences")
+                isLoading = false
+                return
+            }
             
             val jsonArray = JSONArray(eventsJson)
             Log.d(TAG, "📅 Parsed ${jsonArray.length()} events from JSON")
@@ -64,10 +88,14 @@ class AgendaRemoteViewsFactory(private val context: Context) : RemoteViewsServic
                 events.add(eventData)
                 Log.d(TAG, "📅 Added event: ${eventData.title}")
             }
-            Log.d(TAG, "📅 Total events loaded: ${events.size}")
+            Log.d(TAG, "✅ Total events loaded: ${events.size}")
+            
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error loading events", e)
             e.printStackTrace()
+            loadError = true
+        } finally {
+            isLoading = false
         }
     }
     
@@ -75,53 +103,124 @@ class AgendaRemoteViewsFactory(private val context: Context) : RemoteViewsServic
         events.clear()
     }
     
-    override fun getCount(): Int = events.size
+    /**
+     * Retourne le nombre d'items : 
+     * - Si aucun événement → 0 (ListView vide, Provider gère l'affichage)
+     * - Sinon → nombre d'événements
+     */
+    override fun getCount(): Int {
+        Log.d(TAG, "getCount: returning ${events.size}")
+        return events.size
+    }
     
     override fun getViewAt(position: Int): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.widget_agenda_item)
+        Log.d(TAG, "🎯 getViewAt($position) called - events.size=${events.size}, loadError=$loadError")
         
-        if (position >= events.size) return views
-        
-        val event = events[position]
-        
-        // Set title
-        views.setTextViewText(R.id.event_title, event.title)
-        
-        // Set time
-        val timeText = if (event.isAllDay) {
-            "Toute la journée"
-        } else {
-            formatTime(event.date)
-        }
-        views.setTextViewText(R.id.event_time, timeText)
-        
-        // Set location if exists
-        if (!event.location.isNullOrEmpty()) {
-            views.setViewVisibility(R.id.event_location, android.view.View.VISIBLE)
-            views.setTextViewText(R.id.event_location, "📍 ${event.location}")
-        } else {
-            views.setViewVisibility(R.id.event_location, android.view.View.GONE)
-        }
-        
-        // Show date badge if not today
-        if (!isToday(event.date)) {
-            views.setViewVisibility(R.id.date_badge, android.view.View.VISIBLE)
-            val dateParts = getDateParts(event.date)
-            views.setTextViewText(R.id.date_day, dateParts.first)
-            views.setTextViewText(R.id.date_month, dateParts.second)
-        } else {
+        // TRY/CATCH GÉANT pour capturer TOUTES les erreurs de rendu
+        try {
+            // Si erreur de chargement, afficher un message "Appuyez pour rafraîchir"
+            if (loadError) {
+                Log.d(TAG, "Showing error/refresh view")
+                return createErrorView("Erreur de synchro", "Appuyez ici ⟳")
+            }
+            
+            // Si pas d'événements (liste vide avec données valides ou pas de données)
+            if (events.isEmpty()) {
+                Log.d(TAG, "Showing empty state view")
+                return createErrorView("Aucun événement", "Appuyez pour actualiser")
+            }
+            
+            // Vérification des bounds
+            if (position < 0 || position >= events.size) {
+                Log.w(TAG, "⚠️ Position $position out of bounds (size=${events.size})")
+                return createErrorView("Erreur index", "Position invalide")
+            }
+            
+            val event = events[position]
+            Log.d(TAG, "🎯 Tentative de rendu de l'item $position avec les données : ${event.title}")
+            
+            // Créer la vue avec gestion d'erreur pour chaque étape
+            val views = RemoteViews(context.packageName, R.layout.widget_agenda_item)
+            
+            // Set title
+            views.setTextViewText(R.id.event_title, event.title)
+            Log.d(TAG, "✅ Title set: ${event.title}")
+            
+            // Set time (avec fallback)
+            val timeText = try {
+                if (event.isAllDay) {
+                    "Toute la journée"
+                } else {
+                    formatTime(event.date) ?: ""
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error formatting time", e)
+                ""
+            }
+            views.setTextViewText(R.id.event_time, timeText)
+            Log.d(TAG, "✅ Time set: $timeText")
+            
+            // Set location if exists
+            try {
+                if (!event.location.isNullOrEmpty()) {
+                    views.setViewVisibility(R.id.event_location, android.view.View.VISIBLE)
+                    views.setTextViewText(R.id.event_location, event.location)
+                } else {
+                    views.setViewVisibility(R.id.event_location, android.view.View.GONE)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error setting location", e)
+                views.setViewVisibility(R.id.event_location, android.view.View.GONE)
+            }
+            
+            // Date badge supprimé pour simplification
             views.setViewVisibility(R.id.date_badge, android.view.View.GONE)
+            
+            // Set fill-in intent for click handling (opens event detail)
+            try {
+                val fillInIntent = Intent().apply {
+                    data = Uri.parse("lifeos://agenda/event?id=${event.id}")
+                }
+                views.setOnClickFillInIntent(R.id.event_item_container, fillInIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error setting click intent", e)
+            }
+            
+            Log.d(TAG, "✅ getViewAt($position) SUCCESS: ${event.title}")
+            
+            return views
+            
+        } catch (e: Exception) {
+            // CATCH GÉANT - Si QUOI QUE CE SOIT échoue, retourner une vue d'erreur
+            Log.e(TAG, "❌❌❌ FATAL ERROR in getViewAt($position)", e)
+            e.printStackTrace()
+            return createErrorView("Erreur de rendu", "Appuyez pour réessayer")
         }
-        
-        // Set fill-in intent for click handling (opens event detail)
-        val fillInIntent = Intent().apply {
-            data = Uri.parse("lifeos://agenda/event?id=${event.id}")
+    }
+    
+    /**
+     * Crée une vue d'erreur/fallback simple
+     */
+    private fun createErrorView(title: String, subtitle: String): RemoteViews {
+        return try {
+            val errorViews = RemoteViews(context.packageName, R.layout.widget_agenda_item)
+            errorViews.setTextViewText(R.id.event_title, title)
+            errorViews.setTextViewText(R.id.event_time, subtitle)
+            errorViews.setViewVisibility(R.id.event_location, android.view.View.GONE)
+            errorViews.setViewVisibility(R.id.date_badge, android.view.View.GONE)
+            
+            // Intent pour rafraîchir
+            val refreshIntent = Intent().apply {
+                data = Uri.parse("lifeos://agenda/refresh")
+            }
+            errorViews.setOnClickFillInIntent(R.id.event_item_container, refreshIntent)
+            
+            errorViews
+        } catch (e: Exception) {
+            Log.e(TAG, "❌❌❌ Even createErrorView failed!", e)
+            // Dernier recours: vue minimale
+            RemoteViews(context.packageName, R.layout.widget_agenda_item)
         }
-        views.setOnClickFillInIntent(R.id.event_item_container, fillInIntent)
-        
-        Log.d(TAG, "📅 getViewAt($position): ${event.title}")
-        
-        return views
     }
     
     private fun formatTime(dateString: String): String {
@@ -202,7 +301,18 @@ class AgendaRemoteViewsFactory(private val context: Context) : RemoteViewsServic
         return null
     }
     
-    override fun getLoadingView(): RemoteViews? = null
+    /**
+     * Retourne une vue de chargement simple au lieu de null
+     * pour éviter l'affichage du texte "Chargement..." par défaut d'Android
+     */
+    override fun getLoadingView(): RemoteViews {
+        return RemoteViews(context.packageName, R.layout.widget_agenda_item).apply {
+            setTextViewText(R.id.event_title, "")
+            setTextViewText(R.id.event_time, "")
+            setViewVisibility(R.id.event_location, android.view.View.GONE)
+            setViewVisibility(R.id.date_badge, android.view.View.GONE)
+        }
+    }
     
     override fun getViewTypeCount(): Int = 1
     

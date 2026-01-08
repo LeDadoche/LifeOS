@@ -76,7 +76,7 @@ void main() async {
 
 class LifeOSApp extends ConsumerStatefulWidget {
   final Uri? initialUri;
-  
+
   const LifeOSApp({super.key, this.initialUri});
 
   @override
@@ -84,16 +84,15 @@ class LifeOSApp extends ConsumerStatefulWidget {
 }
 
 class _LifeOSAppState extends ConsumerState<LifeOSApp> {
-  
   @override
   void initState() {
     super.initState();
-    
+
     // Listen for widget clicks while app is running (mobile only)
     if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
       HomeWidget.widgetClicked.listen(_handleWidgetClick);
     }
-    
+
     // Handle initial URI if app was launched from widget
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.initialUri != null) {
@@ -101,19 +100,19 @@ class _LifeOSAppState extends ConsumerState<LifeOSApp> {
       }
     });
   }
-  
+
   void _handleWidgetClick(Uri? uri) {
     if (uri == null) return;
-    
+
     debugPrint('🔗 [LifeOSApp] Widget click received: $uri');
     debugPrint('🔗 [LifeOSApp] Host: ${uri.host}, Path: ${uri.path}');
-    
+
     // Convert lifeos:// URI to GoRouter path
     final host = uri.host;
     final path = uri.path;
-    
+
     String? routePath;
-    
+
     switch (host) {
       case 'tasks':
         if (path == '/add') {
@@ -145,15 +144,31 @@ class _LifeOSAppState extends ConsumerState<LifeOSApp> {
         routePath = '/settings';
         break;
     }
-    
+
     if (routePath != null) {
-      debugPrint('🔗 [LifeOSApp] Will navigate to: $routePath');
-      
+      final path = routePath; // Variable locale pour la promotion de type
+      debugPrint('🔗 [LifeOSApp] Will navigate to: $path');
+
       // Use post-frame callback to ensure navigation happens after rebuild
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final router = ref.read(goRouterProvider);
-        debugPrint('🔗 [LifeOSApp] Executing navigation to: $routePath');
-        router.go(routePath!);
+
+        // Si on vient d'un deep link vers une sous-page,
+        // on s'assure que le dashboard est visité d'abord pour initialiser les providers
+        if (path.contains('/add') || path.contains('/event')) {
+          debugPrint(
+              '🔗 [LifeOSApp] Deep link detected, initializing dashboard first...');
+          // D'abord aller au dashboard pour initialiser
+          router.go('/');
+          // Puis naviguer vers la destination avec un petit délai
+          Future.delayed(const Duration(milliseconds: 100), () {
+            debugPrint('🔗 [LifeOSApp] Now navigating to: $path');
+            router.push(path);
+          });
+        } else {
+          debugPrint('🔗 [LifeOSApp] Executing navigation to: $path');
+          router.go(path);
+        }
       });
     }
   }

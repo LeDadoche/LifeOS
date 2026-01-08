@@ -7,7 +7,7 @@ class SnackBarUtils {
   static void show(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 2),
+    Duration duration = const Duration(seconds: 5),
     SnackBarAction? action,
     Color? backgroundColor,
     IconData? icon,

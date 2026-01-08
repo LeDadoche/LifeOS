@@ -1,8 +1,12 @@
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
-import '../../features/money/presentation/screens/money_screen.dart';
+import '../../features/money/presentation/screens/financial_dashboard_screen.dart';
 import '../../features/money/presentation/screens/add_transaction_screen.dart';
+import '../../features/money/presentation/screens/financial_profile_screen.dart';
+import '../../features/money/presentation/screens/recurring_transactions_screen.dart';
+import '../../features/money/presentation/screens/categories_management_screen.dart';
+import '../../features/money/presentation/screens/savings_goals_screen.dart';
 import '../../features/tasks/presentation/screens/tasks_screen.dart';
 import '../../features/tasks/presentation/screens/quick_add_task_screen.dart';
 import '../../features/notes/presentation/screens/notes_screen.dart';
@@ -67,14 +71,17 @@ GoRouter goRouter(GoRouterRef ref) {
           // Route pour ajouter un événement depuis le widget
           GoRoute(
             path: 'add',
-            builder: (context, state) => const AgendaScreen(openAddDialog: true),
+            builder: (context, state) =>
+                const AgendaScreen(openAddDialog: true),
           ),
           // Route pour voir un événement spécifique
           GoRoute(
             path: 'event',
             builder: (context, state) {
               final eventId = state.uri.queryParameters['id'];
-              return AgendaScreen(highlightEventId: eventId != null ? int.tryParse(eventId) : null);
+              return AgendaScreen(
+                  highlightEventId:
+                      eventId != null ? int.tryParse(eventId) : null);
             },
           ),
         ],
@@ -103,11 +110,27 @@ GoRouter goRouter(GoRouterRef ref) {
       ),
       GoRoute(
         path: '/money',
-        builder: (context, state) => const MoneyScreen(),
+        builder: (context, state) => const FinancialDashboardScreen(),
         routes: [
           GoRoute(
             path: 'add',
             builder: (context, state) => const AddTransactionScreen(),
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const FinancialProfileScreen(),
+          ),
+          GoRoute(
+            path: 'recurring',
+            builder: (context, state) => const RecurringTransactionsScreen(),
+          ),
+          GoRoute(
+            path: 'categories',
+            builder: (context, state) => const CategoriesManagementScreen(),
+          ),
+          GoRoute(
+            path: 'goals',
+            builder: (context, state) => const SavingsGoalsScreen(),
           ),
         ],
       ),

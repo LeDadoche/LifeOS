@@ -22,24 +22,44 @@ final pendingTasksProvider = StreamProvider<List<Task>>((ref) {
 class TasksRepository {
   final _client = Supabase.instance.client;
 
+  String? get _currentUserId => _client.auth.currentUser?.id;
+
   // Lecture de toutes les tâches
   Stream<List<Task>> watchAllTasks() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchAllTasks: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream TASKS (all) pour user $userId');
     return _client
         .from('tasks')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('created_at')
-        .map((data) => data.map((json) => Task.fromJson(json)).toList());
+        .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [tasks] - ${data.length} éléments');
+          return data.map((json) => Task.fromJson(json)).toList();
+        });
   }
 
   // Lecture des tâches non complétées (pour widget)
   Stream<List<Task>> watchPendingTasks() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchPendingTasks: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream TASKS (pending) pour user $userId');
     return _client
         .from('tasks')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('due_date', ascending: true)
         .order('is_starred', ascending: false)
         .order('created_at')
         .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [tasks pending] - ${data.length} éléments');
           final tasks = data.map((json) => Task.fromJson(json)).toList();
           // Filtrer les tâches non complétées et trier
           return tasks.where((t) => !t.isCompleted).toList()

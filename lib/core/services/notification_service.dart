@@ -14,6 +14,9 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService();
 });
 
+/// Pattern de vibration personnalisé (délai, vibration, pause, vibration)
+final Int64List _vibrationPattern = Int64List.fromList([0, 500, 200, 500]);
+
 /// Canal de notification Android pour les événements
 const AndroidNotificationChannel _agendaChannel = AndroidNotificationChannel(
   'agenda_reminders', // id
@@ -242,7 +245,7 @@ class NotificationService {
         : '$reminderText • $timeText';
 
     // Détails de la notification Android - UTILISER LE CANAL
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'agenda_reminders', // DOIT correspondre au channel ID
       'Rappels d\'événements',
       channelDescription:
@@ -251,6 +254,7 @@ class NotificationService {
       priority: Priority.max, // MAX pour heads-up
       icon: '@mipmap/ic_launcher',
       enableVibration: true,
+      vibrationPattern: _vibrationPattern,
       playSound: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
@@ -265,7 +269,7 @@ class NotificationService {
       interruptionLevel: InterruptionLevel.timeSensitive,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
       macOS: darwinDetails,
@@ -350,13 +354,16 @@ class NotificationService {
 
     debugPrint('🔔 [NOTIF] Envoi notification de test...');
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'agenda_reminders',
       'Rappels d\'événements',
       channelDescription: 'Test',
       importance: Importance.max,
       priority: Priority.max,
       icon: '@mipmap/ic_launcher',
+      enableVibration: true,
+      vibrationPattern: _vibrationPattern,
+      playSound: true,
     );
 
     const darwinDetails = DarwinNotificationDetails(
@@ -364,7 +371,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
       macOS: darwinDetails,
@@ -420,7 +427,7 @@ class NotificationService {
     final dueDateText = _formatDate(task.dueDate!);
     final body = '$reminderText\n📅 Échéance: $dueDateText';
 
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'task_reminders',
       'Rappels de tâches',
       channelDescription: 'Notifications pour les rappels de tâches',
@@ -428,6 +435,7 @@ class NotificationService {
       priority: Priority.max,
       icon: '@mipmap/ic_launcher',
       enableVibration: true,
+      vibrationPattern: _vibrationPattern,
       playSound: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
@@ -440,7 +448,7 @@ class NotificationService {
       interruptionLevel: InterruptionLevel.timeSensitive,
     );
 
-    const notificationDetails = NotificationDetails(
+    final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
       macOS: darwinDetails,

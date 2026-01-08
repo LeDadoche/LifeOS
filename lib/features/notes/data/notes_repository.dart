@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'note_model.dart';
@@ -22,6 +23,7 @@ class NotesRepository {
     bool isFavorite = false,
     NoteColor color = NoteColor.none,
     NoteTheme theme = NoteTheme.none,
+    String? sketchData,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) return;
@@ -37,6 +39,9 @@ class NotesRepository {
       data['is_favorite'] = isFavorite;
       data['color'] = color.name;
       data['theme'] = theme.name;
+      if (sketchData != null) {
+        data['sketch_data'] = sketchData;
+      }
     }
 
     try {
@@ -57,7 +62,12 @@ class NotesRepository {
   }
 
   Future<void> updateNote(Note note) async {
-    if (note.id == null) return;
+    if (note.id == null) {
+      debugPrint('⚠️ [NotesRepository] updateNote: ID is null, aborting');
+      return;
+    }
+
+    debugPrint('📝 [NotesRepository] Updating note ID: ${note.id}');
 
     final data = <String, dynamic>{
       'title': note.title,
@@ -68,11 +78,16 @@ class NotesRepository {
       data['is_favorite'] = note.isFavorite;
       data['color'] = note.color.name;
       data['theme'] = note.theme.name;
+      if (note.sketchData != null) {
+        data['sketch_data'] = note.sketchData;
+      }
     }
 
     try {
       await _client.from('notes').update(data).eq('id', note.id!);
+      debugPrint('✅ [NotesRepository] Note ${note.id} updated successfully');
     } on PostgrestException catch (e) {
+      debugPrint('❌ [NotesRepository] PostgrestException: ${e.code} - ${e.message}');
       if (e.code == 'PGRST204' || e.message.contains('column')) {
         _hasNewColumns = false;
         // Réessayer sans les nouveaux champs
@@ -80,6 +95,7 @@ class NotesRepository {
           'title': note.title,
           'content': note.content,
         }).eq('id', note.id!);
+        debugPrint('✅ [NotesRepository] Note ${note.id} updated (fallback mode)');
       } else {
         rethrow;
       }
@@ -123,12 +139,22 @@ class NotesRepository {
     await _client.from('notes').delete().eq('id', id);
   }
 
+  String? get _currentUserId => _client.auth.currentUser?.id;
+
   Stream<List<Note>> watchAllNotes() {
+    final userId = _currentUserId;
+    if (userId == null) {
+      debugPrint('⚠️ [Realtime] watchAllNotes: No user logged in');
+      return Stream.value([]);
+    }
+    debugPrint('🔄 [Realtime] Initialisation stream NOTES pour user $userId');
     return _client
         .from('notes')
         .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
         .order('created_at', ascending: false)
         .map((data) {
+          debugPrint('🔄 [Realtime] Nouvelle donnée reçue pour [notes] - ${data.length} éléments');
           final notes = data.map((json) => Note.fromJson(json)).toList();
           // Trier manuellement : favoris en premier (si le champ existe)
           notes.sort((a, b) {

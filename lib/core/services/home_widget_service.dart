@@ -96,6 +96,9 @@ class HomeWidgetService {
 
       // Save to shared preferences
       await HomeWidget.saveWidgetData('tasks_data', jsonEncode(tasks));
+      // Save timestamp for timeout detection
+      await HomeWidget.saveWidgetData('tasks_last_update', DateTime.now().millisecondsSinceEpoch);
+      debugPrint('📋 [HomeWidget] tasks_last_update saved: ${DateTime.now().millisecondsSinceEpoch}');
 
       // Update the widget
       if (Platform.isAndroid) {
@@ -135,8 +138,9 @@ class HomeWidgetService {
 
       // Fetch upcoming events
       final now = DateTime.now().subtract(const Duration(minutes: 15));
-      debugPrint('📅 [HomeWidget] Fetching events after: ${now.toIso8601String()}');
-      
+      debugPrint(
+          '📅 [HomeWidget] Fetching events after: ${now.toIso8601String()}');
+
       final response = await client
           .from('events')
           .select()
@@ -161,13 +165,24 @@ class HomeWidgetService {
 
       final jsonData = jsonEncode(events);
       debugPrint('📅 [HomeWidget] Saving events_data: $jsonData');
-      
+
       // Save to shared preferences
       await HomeWidget.saveWidgetData('events_data', jsonData);
+      // Save timestamp for timeout detection
+      await HomeWidget.saveWidgetData('events_last_update', DateTime.now().millisecondsSinceEpoch);
+      debugPrint('📅 [HomeWidget] events_last_update saved: ${DateTime.now().millisecondsSinceEpoch}');
+
+      // Petit délai pour s'assurer que les SharedPreferences sont synchronisées
+      await Future.delayed(const Duration(milliseconds: 100));
 
       // Update the widget
       if (Platform.isAndroid) {
         debugPrint('📅 [HomeWidget] Calling updateWidget for Android...');
+        await HomeWidget.updateWidget(
+          androidName: _agendaWidgetAndroid,
+        );
+        // Force un second update pour garantir le refresh de la ListView
+        await Future.delayed(const Duration(milliseconds: 50));
         await HomeWidget.updateWidget(
           androidName: _agendaWidgetAndroid,
         );
